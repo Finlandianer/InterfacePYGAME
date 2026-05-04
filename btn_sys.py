@@ -1,33 +1,94 @@
 import pygame
-import imagens
 
-all_sprites = pygame.sprite.LayeredUpdates()
+all_drawable = pygame.sprite.LayeredUpdates()
 
 
-class Button(pygame.sprite.Sprite):
+# ================= BACKGROUND =================
+
+class background(pygame.sprite.Sprite):
+
     def __init__(self, x, y, image, scale, layer):
         super().__init__()
 
-        w = image.get_width()
-        h = image.get_height()
-
-        self.image = pygame.transform.scale(
+        self._layer = layer
+        self.image = pygame.transform.smoothscale(
             image,
-            (int(w * scale), int(h * scale))
+            (int(image.get_width() * scale), int(image.get_height() * scale))
         )
-
         self.rect = self.image.get_rect(topleft=(x, y))
+        
+# ================= BUTTON =================
+class Button(pygame.sprite.Sprite):
+
+    def __init__(self, x, y, text, layer):
+        super().__init__()
+
+        self._layer = layer
+
+        self.text = text
+        self.font = pygame.font.Font("assets/fontes/monogram.ttf", 55)
+
+        self.base_color = (230, 230, 230)
+        self.hover_color = (255, 255, 255)
+
+        # animação
+        self.base_scale = 1.0
+        self.hover_scale = 1.04
+        self.current_scale = 1.0
+        self.animation_speed = 0.15
 
         self.clicked = False
         self.action = False
-        self._layer = layer
 
+        # cria texto inicial
+        self.create_surface(self.base_color)
+
+        self.rect = self.image.get_rect(center=(x, y))
+
+    # -------------------------
+    def create_surface(self, color):
+
+        text_surface = self.font.render(self.text, True, color)
+
+        # fundo transparente
+        self.base_surface = text_surface
+        self.image = text_surface
+
+    # -------------------------
     def update(self):
-        self.action = False
 
         mouse_pos = pygame.mouse.get_pos()
+        hovering = self.rect.collidepoint(mouse_pos)
 
-        if self.rect.collidepoint(mouse_pos):
+        # muda cor
+        color = self.hover_color if hovering else self.base_color
+        self.create_surface(color)
+
+        # escala suave
+        target_scale = self.hover_scale if hovering else self.base_scale
+        self.current_scale += (
+            target_scale - self.current_scale
+        ) * self.animation_speed
+
+        w = self.base_surface.get_width()
+        h = self.base_surface.get_height()
+
+        new_size = (int(w * self.current_scale),
+                    int(h * self.current_scale))
+
+        center = self.rect.center
+
+        self.image = pygame.transform.smoothscale(
+            self.base_surface,
+            new_size
+        )
+
+        self.rect = self.image.get_rect(center=center)
+
+        # clique
+        self.action = False
+
+        if hovering:
             if pygame.mouse.get_pressed()[0] and not self.clicked:
                 self.clicked = True
                 self.action = True
@@ -35,15 +96,15 @@ class Button(pygame.sprite.Sprite):
         if not pygame.mouse.get_pressed()[0]:
             self.clicked = False
 
+# ================= MOINHO =================
 class Moinho(pygame.sprite.Sprite):
+
 
     def __init__(self, x, y, spritesheet, frame_width, frame_height, num_frames, layer):
         super().__init__()
 
-        # ---------- LAYER ----------
         self._layer = layer
 
-        # ---------- CORTAR SPRITESHEET ----------
         self.frames = []
 
         for i in range(num_frames):
@@ -52,22 +113,55 @@ class Moinho(pygame.sprite.Sprite):
             )
             self.frames.append(frame)
 
-        # ---------- ANIMAÇÃO ----------
         self.frame_index = 0
-        self.animation_speed = 0.15
+        self.animation_speed = 0.17
 
         self.image = self.frames[0]
         self.rect = self.image.get_rect(topleft=(x, y))
 
-    # ---------- UPDATE ----------
     def update(self):
 
-        # avançar animação
         self.frame_index += self.animation_speed
 
-        # reiniciar quando acabar
         if self.frame_index >= len(self.frames):
             self.frame_index = 0
 
-        # trocar imagem
         self.image = self.frames[int(self.frame_index)]
+
+class Parallax(pygame.sprite.Sprite):
+
+    def __init__(self, image, y, speed, layer):
+        super().__init__()
+
+        self._layer = layer
+        self.image = image
+        self.speed = speed
+        self.y = y
+
+        self.width = self.image.get_width()
+
+        # múltiplas cópias da imagem (garante cobertura completa)
+        self.positions = [
+            0,
+            self.width,
+            self.width * 2,
+            self.width * 3
+        ]
+
+        self.rect = self.image.get_rect()
+
+    def update(self):
+
+        # mover para DIREITA
+        for i in range(len(self.positions)):
+            self.positions[i] += self.speed
+
+        # reciclar imagens
+        for i in range(len(self.positions)):
+            if self.positions[i] >= self.width:
+                self.positions[i] = min(self.positions) - self.width
+
+    def draw(self, surface):
+
+        for x in self.positions:
+            surface.blit(self.image, (x, self.y))
