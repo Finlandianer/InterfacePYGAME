@@ -128,39 +128,6 @@ class Moinho(pygame.sprite.Sprite):
 
         self.image = self.frames[int(self.frame_index)]
 
-class Parallax(pygame.sprite.Sprite):
-
-    def __init__(self, image, y, speed, layer):
-        super().__init__()
-
-        self._layer = layer
-        self.image = image
-        self.speed = speed
-        self.y = y
-
-        self.width = self.image.get_width()
-
-        # múltiplas cópias da imagem (garante cobertura completa)
-        self.positions = [
-            0,
-            self.width,
-            self.width * 2,
-            self.width * 3
-        ]
-
-        self.rect = self.image.get_rect()
-
-    def update(self):
-
-        # mover para DIREITA
-        for i in range(len(self.positions)):
-            self.positions[i] += self.speed
-
-        # reciclar imagens
-        for i in range(len(self.positions)):
-            if self.positions[i] >= self.width:
-                self.positions[i] = min(self.positions) - self.width
-
     def draw(self, surface):
 
         for x in self.positions:
