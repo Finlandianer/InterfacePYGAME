@@ -1,4 +1,5 @@
 import pygame
+import math
 
 all_drawable = pygame.sprite.LayeredUpdates()
 
@@ -8,20 +9,20 @@ all_drawable = pygame.sprite.LayeredUpdates()
 class background(pygame.sprite.Sprite):
 
     def __init__(self, x, y, image, scale, layer):
-        super().__init__()
+        super().__init__(all_drawable)
 
         self._layer = layer
-        self.image = pygame.transform.smoothscale(
+        self.image: pygame.Surface = pygame.transform.smoothscale(
             image,
             (int(image.get_width() * scale), int(image.get_height() * scale))
         )
-        self.rect = self.image.get_rect(topleft=(x, y))
+        self.rect: pygame.Rect = self.image.get_rect(topleft=(x, y))
         
 # ================= BUTTON =================
 class Button(pygame.sprite.Sprite):
 
     def __init__(self, x, y, text, layer):
-        super().__init__()
+        super().__init__(all_drawable)
 
         self._layer = layer
 
@@ -41,6 +42,8 @@ class Button(pygame.sprite.Sprite):
         self.action = False
 
         # cria texto inicial
+        self.image: pygame.Surface = pygame.Surface((1, 1))
+        self.rect: pygame.Rect = self.image.get_rect()
         self.create_surface(self.base_color)
 
         self.rect = self.image.get_rect(center=(x, y))
@@ -101,7 +104,7 @@ class Moinho(pygame.sprite.Sprite):
 
 
     def __init__(self, x, y, spritesheet, frame_width, frame_height, num_frames, layer):
-        super().__init__()
+        super().__init__(all_drawable)
 
         self._layer = layer
 
@@ -115,6 +118,8 @@ class Moinho(pygame.sprite.Sprite):
 
         self.frame_index = 0
         self.animation_speed = 0.17
+        self.positions = [x]
+        self.y = y
 
         self.image = self.frames[0]
         self.rect = self.image.get_rect(topleft=(x, y))
@@ -132,3 +137,87 @@ class Moinho(pygame.sprite.Sprite):
 
         for x in self.positions:
             surface.blit(self.image, (x, self.y))
+
+class Vignette(pygame.sprite.Sprite):
+
+    def __init__(self, width, height, light_radius, light_target, layer):
+        super().__init__(all_drawable)
+
+        self._layer = layer
+
+        self.width = width
+        self.height = height
+        self.radius = light_radius
+        self.light_target = light_target
+
+        # ✅ declarar tipos primeiro
+        self.image: pygame.Surface = pygame.Surface(
+            (width, height),
+            pygame.SRCALPHA
+        )
+
+        self.rect: pygame.Rect = self.image.get_rect(topleft=(0, 0))
+    def update(self):
+
+        self.image.fill((0, 0, 0, 60))  # escurecimento leve
+
+        cx, cy = self.light_target.rect.center
+
+        for i in range(self.radius, 0, -6):
+
+            alpha = int(60 * (i / self.radius) ** 2)
+
+            pygame.draw.circle(
+                self.image,
+                (0, 0, 0, alpha),
+                (cx, cy),
+                i
+            )
+class Glow(pygame.sprite.Sprite):
+
+    def __init__(self, target, radius, color, layer):
+        
+        super().__init__(all_drawable)
+
+        self._layer = layer
+
+        self.target = target
+        self.radius = radius
+        self.color = color
+
+        size = radius * 2
+
+        self.image: pygame.Surface = pygame.Surface(
+            (size, size),
+            pygame.SRCALPHA
+        )
+
+        self.rect: pygame.Rect = self.image.get_rect()
+
+        self.create_glow()
+
+    def create_glow(self):
+
+        self.image.fill((0, 0, 0, 0))
+
+        center = self.radius
+
+        # vários círculos
+        for i in range(self.radius, 0, -4):
+
+            alpha = int(255 * (i / self.radius) ** 2 * 0.15)
+
+            pygame.draw.circle(
+                self.image,
+                (*self.color, alpha),
+                (center, center),
+                i
+            )
+
+    def update(self):
+
+        pulse = math.sin(pygame.time.get_ticks() * 0.002)
+
+        self.image.set_alpha(int(180 + pulse * 40))
+
+        self.rect.center = self.target.rect.center
